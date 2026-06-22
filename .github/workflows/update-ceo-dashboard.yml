@@ -2,58 +2,15 @@ name: Update CEO Dashboard
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 1시간마다
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
   update-dashboard:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Update Notion CEO Dashboard
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
-        run: |
-          python3 - <<'EOF'
-          import urllib.request
-          import json
-          import os
-
-          token = os.environ['NOTION_API_KEY']
-          headers = {
-              'Authorization': f'Bearer {token}',
-              'Notion-Version': '2022-06-28',
-              'Content-Type': 'application/json'
-          }
-
-          def notion_request(url, method='GET', data=None):
-              req = urllib.request.Request(
-                  url, method=method,
-                  data=json.dumps(data or {}).encode(),
-                  headers=headers
-              )
-              return json.loads(urllib.request.urlopen(req).read())
-
-          # 프로젝트 DB에서 현재 단계 읽기
-          db_id = '4b69faa56c49485f83e37c734b2061cf'
-          res = notion_request(
-              f'https://api.notion.com/v1/databases/{db_id}/query',
-              method='POST'
-          )
-
-          phases = [
-              'Phase 1 요청 수집',
-              'Phase 2 아이디어 제안',
-              'Phase 3 아이디어 승인',
-              'Phase 4 견적 제안',
-              'Phase 5 견적 승인',
-              'Phase 6 기획',
-              'Phase 7 제작',
-              'Phase 8 테스트',
-              'Phase 9 최종 승인'
-          ]
-
-          for page in res.get('results', []):
-              props = page.get('properties', {})
-              title = props.get('프로젝트명', {}).get('title', [{}])
-              name = title[0].get('plain_text', '') if title else ''
-              stage = props.get('현재 단계',
+        run: python3 scripts/update_ceo_dashboard.py
