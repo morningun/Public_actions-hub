@@ -1,6 +1,7 @@
 import urllib.request
 import json
 import os
+from datetime import datetime
 
 token = os.environ['NOTION_API_KEY']
 headers = {
@@ -18,18 +19,7 @@ def notion_request(url, method='GET', data=None):
     )
     return json.loads(urllib.request.urlopen(req).read())
 
-phases = [
-    'Phase 1 요청 수집',
-    'Phase 2 아이디어 제안',
-    'Phase 3 아이디어 승인',
-    'Phase 4 견적 제안',
-    'Phase 5 견적 승인',
-    'Phase 6 기획',
-    'Phase 7 제작',
-    'Phase 8 테스트',
-    'Phase 9 최종 승인'
-]
-
+# 프로젝트 DB에서 현재 단계 읽기
 db_id = '4b69faa56c49485f83e37c734b2061cf'
 res = notion_request(
     f'https://api.notion.com/v1/databases/{db_id}/query',
@@ -48,19 +38,31 @@ for page in res.get('results', []):
 
     print(f'{name} -> {current}')
 
-    rows = []
-    found = False
-    for phase in phases:
-        if phase == current:
-            rows.append({'phase': phase, 'status': '🔄 진행 중'})
-            found = True
-        elif not found:
-            rows.append({'phase': phase, 'status': '✅ 완료'})
-        else:
-            rows.append({'phase': phase, 'status': '⏳ 대기'})
+    # CEO 대시보드 페이지에 텍스트 추가
+    dashboard_id = '387d36b7213481e0b414d8590f9aff31'
+    now = datetime.now().strftime('%Y-%m-%d %H:%M')
 
-    print(f'업데이트 완료: {name}')
-    for r in rows:
-        print(f"  {r['phase']}: {r['status']}")
+    update_data = {
+        'children': [
+            {
+                'object': 'block',
+                'type': 'paragraph',
+                'paragraph': {
+                    'rich_text': [{
+                        'type': 'text',
+                        'text': {
+                            'content': f'[자동업데이트] {now} | {name} | 현재: {current}'
+                        }
+                    }]
+                }
+            }
+        ]
+    }
 
-print('CEO 대시보드 업데이트 완료!')
+    notion_request(
+        f'https://api.notion.com/v1/blocks/{dashboard_id}/children',
+        method='PATCH',
+        data=update_data
+    )
+
+    print(f'✅ {name} 업데이트 완료!')
